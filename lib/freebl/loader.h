@@ -10,7 +10,7 @@
 
 #include "blapi.h"
 
-#define FREEBL_VERSION 0x0325
+#define FREEBL_VERSION 0x0326
 
 struct FREEBLVectorStr {
 
@@ -831,6 +831,20 @@ struct FREEBLVectorStr {
     void (*p_ChaCha20_DestroyContext)(ChaCha20Context *ctx, PRBool freeit);
 
     /* Version 3.025 came to here */
+    SECStatus (*p_ED_NewKey)(ECParams *params,
+                             ECPrivateKey **privKey);
+
+    void (*p_Hacl_Ed25519_secret_to_public)(uint8_t *pub, uint8_t *priv);
+
+    SECStatus (*p_EDDSA_SignDigest)(ECPrivateKey *key,
+                                    SECItem *signature,
+                                    const SECItem *digest);
+
+    SECStatus (*p_EDDSA_VerifyDigest)(ECPublicKey *key,
+                                      const SECItem *signature,
+                                      const SECItem *digest);
+
+    /* Version 3.026 came to here */
 
     /* Add new function pointers at the end of this struct and bump
      * FREEBL_VERSION at the beginning of this file. */

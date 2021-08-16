@@ -15,6 +15,8 @@
 #include "mplogic.h"
 #include "ec.h"
 #include "ecl.h"
+#include "../verified/Hacl_Ed25519.h"
+
 
 static const ECMethod kMethods[] = {
     { ECCurve25519,
@@ -419,6 +421,24 @@ cleanup:
 
     return rv;
 }
+
+
+
+/* Generates a new ED key pair. The private key is a random value and
+ * the public key is the result of performing a scalar point multiplication
+ * of that value with the curve's base point.
+ */
+SECStatus
+ED_NewKey(ECParams *ecParams, ECPrivateKey **privKey)
+{
+    printf("Generating ED_NewKey\n");
+    ECPrivateKey *newKey = NULL;
+    SECStatus rv = EC_NewKey(ecParams, &newKey);
+    Hacl_Ed25519_secret_to_public(newKey->publicValue.data, newKey->privateValue.data);
+    *privKey = newKey;
+    return rv;
+}
+
 
 /* Validates an EC public key as described in Section 5.2.2 of
  * X9.62. The ECDH primitive when used without the cofactor does
@@ -1136,4 +1156,69 @@ cleanup:
 #endif
 
     return rv;
+}
+
+
+/*EdDSA: Currently only Ed22519 is implemented.*/
+
+
+/*
+** Computes the EdDSA signature on the message using the given key.
+*/
+
+SECStatus
+EDDSA_SignDigest(ECPrivateKey *key, SECItem *signature, const SECItem *msg)
+{
+
+    if (!key || !key->privateValue.data || key->privateValue.len != Ed25519_PRIVATE_KEYLEN ||
+        !msg || !signature || !signature->data || !(key->ecParams.name == ECCurve25519)) {
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    if(key->ecParams.name == ECCurve25519){
+        Hacl_Ed25519_sign(signature->data, key->privateValue.data, msg->len,
+                      msg->data);
+        BLAPI_CLEAR_STACK(2048);
+        return SECSuccess;
+    }
+    return SECFailure;
+}
+
+/*
+** Checks the signature on the given message using the key provided.
+*/
+
+
+SECStatus
+EDDSA_VerifyDigest(ECPublicKey *key, const SECItem *signature,
+                   const SECItem *msg)
+{
+    if (!key || !key->publicValue.data || !msg || !signature || !signature->data
+        || !(key->ecParams.name == ECCurve25519)) {
+        if(!key || !key->publicValue.data || !(key->ecParams.name == ECCurve25519)){
+            printf("Problem with key.\n");
+        }
+        printf("Parameters Incorrect.\n");
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+    bool rv = false;
+
+    if(key->ecParams.name == ECCurve25519){
+        printf("Parameters correct.\n");
+        rv = Hacl_Ed25519_verify(key->publicValue.data, msg->len, msg->data,
+                                      signature->data);
+        BLAPI_CLEAR_STACK(2048);
+    }
+
+#if EC_DEBUG
+        printf("ED_VerifyDigest returning %s\n",
+               (rv) ? "success" : "failure");
+#endif
+
+    if (rv) {
+        return SECSuccess;
+    }
+    return SECFailure;
 }

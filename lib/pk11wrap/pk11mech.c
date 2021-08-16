@@ -388,6 +388,7 @@ PK11_GetKeyType(CK_MECHANISM_TYPE type, unsigned long len)
         case CKM_ECDSA_SHA1:
         case CKM_EC_KEY_PAIR_GEN: /* aka CKM_ECDSA_KEY_PAIR_GEN */
         case CKM_ECDH1_DERIVE:
+        case CKM_NSS_EDDSA_25519_512:
             return CKK_EC; /* CKK_ECDSA is deprecated */
         case CKM_HKDF_KEY_GEN:
         case CKM_HKDF_DERIVE:

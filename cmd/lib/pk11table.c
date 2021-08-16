@@ -438,6 +438,7 @@ const Constant _consts[] = {
     mkEntry(CKM_EC_KEY_PAIR_GEN, Mechanism),
     mkEntry(CKM_ECDSA, Mechanism),
     mkEntry(CKM_ECDSA_SHA1, Mechanism),
+    mkEntry(CKM_NSS_EDDSA_25519_512, Mechanism),
     mkEntry(CKM_ECDH1_DERIVE, Mechanism),
     mkEntry(CKM_ECDH1_COFACTOR_DERIVE, Mechanism),
     mkEntry(CKM_ECMQV_DERIVE, Mechanism),
