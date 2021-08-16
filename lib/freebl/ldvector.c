@@ -376,9 +376,15 @@ static const struct FREEBLVectorStr vector =
       /* End of version 3.024 */
       ChaCha20_InitContext,
       ChaCha20_CreateContext,
-      ChaCha20_DestroyContext
+      ChaCha20_DestroyContext,
 
       /* End of version 3.025 */
+      ED_NewKey,
+      EDDSA_SignDigest,
+      EDDSA_VerifyDigest
+
+      /* End of version 3.026 */
+
     };
 
 const FREEBLVector*

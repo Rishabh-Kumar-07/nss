@@ -513,6 +513,24 @@ extern SECStatus ECDSA_SignDigestWithSeed(ECPrivateKey *key,
                                           const SECItem *digest,
                                           const unsigned char *seed,
                                           const int seedlen);
+/* EdDSA (only on ed25519)
+** NOTE: ECPrivateKey only needs to hold the ECCurveName and privateValue for
+**       EdDSA functions.
+*/
+
+extern SECStatus ED_NewKey(ECParams *params,
+                           ECPrivateKey **privKey);
+
+void Hacl_Ed25519_secret_to_public(uint8_t *pub, uint8_t *priv);
+
+extern SECStatus EDDSA_SignDigest(ECPrivateKey *key,
+                                  SECItem *signature,
+                                  const SECItem *msg);
+
+extern SECStatus EDDSA_VerifyDigest(ECPublicKey *key,
+                                    const SECItem *signature,
+                                    const SECItem *msg);
+
 
 /******************************************/
 /*

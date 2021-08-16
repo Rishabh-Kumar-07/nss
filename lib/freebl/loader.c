@@ -2446,3 +2446,30 @@ CMAC_Destroy(CMACContext *ctx, PRBool free_it)
         return;
     (vector->p_CMAC_Destroy)(ctx, free_it);
 }
+
+SECStatus
+ED_NewKey(ECParams *params, ECPrivateKey **privKey)
+{
+    if (!vector && PR_SUCCESS != freebl_RunLoaderOnce())
+        return SECFailure;
+    return (vector->p_ED_NewKey)(params, privKey);
+}
+
+
+SECStatus
+EDDSA_SignDigest(ECPrivateKey *key, SECItem *signature,
+                 const SECItem *digest)
+{
+    if (!vector && PR_SUCCESS != freebl_RunLoaderOnce())
+        return SECFailure;
+    return (vector->p_EDDSA_SignDigest)(key, signature, digest);
+}
+
+SECStatus
+EDDSA_VerifyDigest(ECPublicKey *key, const SECItem *signature,
+                   const SECItem *digest)
+{
+    if (!vector && PR_SUCCESS != freebl_RunLoaderOnce())
+        return SECFailure;
+    return (vector->p_EDDSA_VerifyDigest)(key, signature, digest);
+}

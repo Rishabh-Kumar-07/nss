@@ -3,6 +3,7 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include <memory>
+#include "cpputil.h"
 #include "nss.h"
 #include "pk11pub.h"
 #include "sechash.h"
@@ -104,6 +105,89 @@ class Pk11SignatureTest : public ::testing::Test {
     ExportPrivateKey(&key, exported);
     EXPECT_EQ(k, exported);
   }
+
+  void VerifyWithoutHash(const Pkcs11SignatureTestParams& params, const DataBuffer& sig){
+    ScopedSECKEYPublicKey pubKey(ImportPublicKey(params.spki_));
+    ASSERT_TRUE(pubKey);
+    SECItem hashItem;
+    DataBuffer hash;
+    hashItem = {siBuffer, toUcharPtr(params.data_.data()),
+                  static_cast<unsigned int>(params.data_.len())};
+    SECItem sigItem = {siBuffer, toUcharPtr(sig.data()),
+                       static_cast<unsigned int>(sig.len())};
+    SECStatus rv = PK11_VerifyWithMechanism(
+        pubKey.get(), mechanism_, parameters(), &sigItem, &hashItem, nullptr);
+    EXPECT_EQ(rv, true? SECSuccess : SECFailure);
+  }
+
+  bool ImportPrivateKeyAndSignData(const DataBuffer& pkcs8, const DataBuffer& data,
+                                    DataBuffer* sig){
+      ScopedSECKEYPrivateKey privKey(ImportPrivateKey(pkcs8));
+      if (!privKey) {
+          printf("Unable to import private key.\n");
+          return false;
+      }
+      return SignHashedData(privKey, data, sig);
+  }
+
+
+  void SignAndVerifyHash(const Pkcs11SignatureTestParams& params){
+    DataBuffer sig;
+    ASSERT_TRUE(ImportPrivateKeyAndSignData(params.pkcs8_, params.data_,
+                                                      &sig));
+    VerifyWithoutHash(params, sig);
+  }
+
+
+  void GenerateExportImportSignVerify(const Pkcs11SignatureTestParams& params) {
+    ScopedPK11SlotInfo slot(PK11_GetInternalSlot());
+    if (!slot) {
+      ADD_FAILURE() << "Couldn't get slot";
+      return;
+    }
+
+    unsigned char param_buf[65];
+    SECItem ecdsa_params = {siBuffer, param_buf, sizeof(param_buf)};
+    SECOidData *oid_data = SECOID_FindOIDByTag(SEC_OID_CURVE25519);
+    if (!oid_data) {
+      ADD_FAILURE() << "Couldn't get oid_data";
+      return;
+    }
+    ecdsa_params.data[0] = SEC_ASN1_OBJECT_ID;
+    ecdsa_params.data[1] = oid_data->oid.len;
+    memcpy(ecdsa_params.data + 2, oid_data->oid.data, oid_data->oid.len);
+    ecdsa_params.len = oid_data->oid.len + 2;
+
+    SECKEYPublicKey *pub_tmp;
+    SECKEYPrivateKey *priv_tmp;
+    priv_tmp =
+        PK11_GenerateKeyPair(slot.get(), CKM_EC_KEY_PAIR_GEN, &ecdsa_params,
+                             &pub_tmp, PR_FALSE, PR_FALSE, nullptr);
+    if (!pub_tmp || !priv_tmp) {
+      ADD_FAILURE() << "PK11_GenerateKeyPair failed";
+      return;
+    }
+
+    ScopedSECKEYPrivateKey privKey(priv_tmp);
+
+    ScopedSECKEYPublicKey pub(SECKEY_ConvertToPublicKey(priv_tmp));
+
+    DataBuffer sig;
+    DataBuffer data(params.data_.data(), params.data_.len());
+    ASSERT_TRUE(SignHashedData(privKey, data, &sig));
+    SECItem hashItem;
+    DataBuffer hash;
+
+    hashItem = {siBuffer, toUcharPtr(data.data()),
+                  static_cast<unsigned int>(data.len())};
+    SECItem sigItem = {siBuffer, toUcharPtr(sig.data()),
+                       static_cast<unsigned int>(sig.len())};
+
+    SECStatus rv = PK11_VerifyWithMechanism(
+        pub.get(), mechanism_, parameters(), &sigItem, &hashItem, nullptr);
+    EXPECT_EQ(rv, true? SECSuccess : SECFailure);
+  }
+
 
  private:
   CK_MECHANISM_TYPE mechanism_;

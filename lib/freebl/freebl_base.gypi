@@ -143,6 +143,7 @@
         # All intel x64 and 64-bit ARM architectures get the 64 bit version.
         'ecl/curve25519_64.c',
         'verified/Hacl_Curve25519_51.c',
+        'verified/Hacl_Ed25519.c',
       ],
     }, {
       'sources': [

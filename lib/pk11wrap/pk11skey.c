@@ -20,7 +20,6 @@
 #include "secerr.h"
 #include "hasht.h"
 
-static ECPointEncoding pk11_ECGetPubkeyEncoding(const SECKEYPublicKey *pubKey);
 
 static void
 pk11_EnterKeyMonitor(PK11SymKey *symKey)
@@ -2282,7 +2281,7 @@ PK11_PubDerive(SECKEYPrivateKey *privKey, SECKEYPublicKey *pubKey,
 
 /* Test for curves that are known to use a special encoding.
  * Extend this function when additional curves are added. */
-static ECPointEncoding
+ECPointEncoding
 pk11_ECGetPubkeyEncoding(const SECKEYPublicKey *pubKey)
 {
     SECItem oid;

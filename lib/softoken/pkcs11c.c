@@ -2728,6 +2728,40 @@ nsc_ECDSASignStub(void *ctx, void *sigBuf,
     return rv;
 }
 
+static SECStatus
+nsc_EDDSASignStub(void *ctx, void *sigBuf,
+                  unsigned int *sigLen, unsigned int maxSigLen,
+                  void *dataBuf, unsigned int dataLen)
+{
+    SECItem signature, digest;
+    SECStatus rv;
+    NSSLOWKEYPrivateKey *key = (NSSLOWKEYPrivateKey *)ctx;
+
+    signature.data = (unsigned char *)sigBuf;
+    signature.len = maxSigLen;
+    digest.data = (unsigned char *)dataBuf;
+    digest.len = dataLen;
+    rv = EDDSA_SignDigest(&(key->u.ec), &signature, &digest);
+    if (rv != SECSuccess && PORT_GetError() == SEC_ERROR_LIBRARY_FAILURE) {
+        sftk_fatalError = PR_TRUE;
+    }
+    *sigLen = signature.len;
+    return rv;
+}
+static SECStatus
+nsc_EDDSAVerifyStub(void *ctx, void *sigBuf, unsigned int sigLen,
+                    void *dataBuf, unsigned int dataLen)
+{
+    SECItem signature, digest;
+    NSSLOWKEYPublicKey *key = (NSSLOWKEYPublicKey *)ctx;
+
+    signature.data = (unsigned char *)sigBuf;
+    signature.len = sigLen;
+    digest.data = (unsigned char *)dataBuf;
+    digest.len = dataLen;
+    return EDDSA_VerifyDigest(&(key->u.ec), &signature, &digest);
+}
+
 /* NSC_SignInit setups up the signing operations. There are three basic
  * types of signing:
  *      (1) the tradition single part, where "Raw RSA" or "Raw DSA" is applied
@@ -2946,6 +2980,24 @@ NSC_SignInit(CK_SESSION_HANDLE hSession,
             context->maxLen = MAX_ECKEY_LEN * 2;
 
             break;
+
+        case CKM_EDDSA:
+            if (key_type != CKK_EC) {
+                crv = CKR_KEY_TYPE_INCONSISTENT;
+                break;
+            }
+            privKey = sftk_GetPrivKey(key, CKK_EC, &crv);
+            if (privKey == NULL) {
+                crv = CKR_HOST_MEMORY;
+                break;
+            }
+            context->cipherInfo = privKey;
+            context->update = (SFTKCipher)nsc_EDDSASignStub;
+            context->destroy = (privKey == key->objectInfo) ? (SFTKDestroy)sftk_Null : (SFTKDestroy)sftk_FreePrivKey;
+            context->maxLen = MAX_ECKEY_LEN * 2;
+
+            break;
+
 
 #define INIT_HMAC_MECH(mmm)                                        \
     case CKM_##mmm##_HMAC_GENERAL:                                 \
@@ -3706,6 +3758,22 @@ NSC_VerifyInit(CK_SESSION_HANDLE hSession,
             context->verify = (SFTKVerify)nsc_ECDSAVerifyStub;
             context->destroy = sftk_Null;
             break;
+
+        case CKM_EDDSA:
+            if (key_type != CKK_EC) {
+                crv = CKR_KEY_TYPE_INCONSISTENT;
+                break;
+            }
+            pubKey = sftk_GetPubKey(key, CKK_EC, &crv);
+            if (pubKey == NULL) {
+                crv = CKR_HOST_MEMORY;
+                break;
+            }
+            context->cipherInfo = pubKey;
+            context->verify = (SFTKVerify)nsc_EDDSAVerifyStub;
+            context->destroy = sftk_Null;
+            break;
+
 
             INIT_HMAC_MECH(MD2)
             INIT_HMAC_MECH(MD5)
@@ -5630,7 +5698,11 @@ NSC_GenerateKeyPair(CK_SESSION_HANDLE hSession,
                 crv = sftk_MapCryptError(PORT_GetError());
                 break;
             }
-            rv = EC_NewKey(ecParams, &ecPriv);
+            if(ecParams->name == ECCurve25519)
+                rv = ED_NewKey(ecParams, &ecPriv);
+            else
+                rv = EC_NewKey(ecParams, &ecPriv);
+
             if (rv != SECSuccess) {
                 if (PORT_GetError() == SEC_ERROR_LIBRARY_FAILURE) {
                     sftk_fatalError = PR_TRUE;

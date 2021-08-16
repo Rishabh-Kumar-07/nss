@@ -196,7 +196,8 @@ PK11_ImportPublicKey(PK11SlotInfo *slot, SECKEYPublicKey *pubKey,
                               pubKey->u.ec.DEREncodedParams.data,
                               pubKey->u.ec.DEREncodedParams.len);
                 attrs++;
-                if (PR_GetEnvSecure("NSS_USE_DECODED_CKA_EC_POINT")) {
+                if (PR_GetEnvSecure("NSS_USE_DECODED_CKA_EC_POINT") ||
+                    pk11_ECGetPubkeyEncoding(pubKey) == ECPoint_XOnly) {
                     PK11_SETATTRS(attrs, CKA_EC_POINT,
                                   pubKey->u.ec.publicValue.data,
                                   pubKey->u.ec.publicValue.len);
